@@ -1,10 +1,15 @@
-from flask import Flask, jsonify, request
-import json
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 
-app = Flask(__name__)
+app = FastAPI()
 
-# Replace this with your actual hardcoded JSON data (as a string or dictionary)
-hardcoded_json_data = """
+class TextQuery(BaseModel):
+  text_query: str
+
+# Replace this with your actual logic to retrieve data
+# This is just an example using the provided hardcoded_json_data
+def get_data():
+  hardcoded_json_data = """
 {
   "completed_at": "2024-03-12T16:53:07.951721Z",
   "created_at": "2024-03-12T16:52:07.819072Z",
@@ -4402,38 +4407,34 @@ hardcoded_json_data = """
 }
 """
 
-@app.route('/extract_words', methods=['POST'])
-def extract_words():
-    req_data = request.get_json()
-    text_to_query = req_data.get('text_query')
+@app.post('/extract_words')
+async def extract_words(text_query: TextQuery):
+  # Validate request body
+  if not text_query.text_query:
+    raise HTTPException(status_code=400, detail="Missing text_query parameter")
 
-    if not text_to_query:
-        return jsonify({"error": "Missing text_query parameter"}), 400
+  # Get data (replace with your actual data fetching logic)
+  data = get_data()
 
-    # Parse hardcoded JSON data (assuming it's a string)
-    try:
-        data = json.loads(hardcoded_json_data)
-    except:
-        return jsonify({"error": "Invalid JSON format"}), 400
+  # Initialization
+  start_time = None
+  end_time = None
 
-    # Initialization
-    start_time = None
-    end_time = None
+  # Loop through segments
+  for segment in data['segments']:
+    words = segment['words']
+    for word in words:
+      if word['word'] == text_query.text_query:
+        if start_time is None:
+          start_time = word['start']
+        end_time = word['end']
 
-    # Loop through segments
-    for segment in data['segments']:
-        words = segment['words']
-        for word in words:
-            if word['text'] == text_to_query:
-                if start_time is None:
-                    start_time = word['start']
-                end_time = word['end']
-
-    # Return result
-    if start_time is None:
-        return jsonify({"message": f"Text '{text_to_query}' not found"}), 404
-    else:
-        return jsonify({"start": start_time, "end": end_time})
+  # Return result
+  if start_time is None:
+    return {"message": f"Text '{text_query.text_query}' not found"}
+  else:
+    return {"start": start_time, "end": end_time}
 
 if __name__ == '__main__':
-    app.run(debug=True)
+  import uvicorn
+  uvicorn.run(app, host='0.0.0.0', port=8000)
